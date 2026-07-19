@@ -385,6 +385,9 @@ void uarchsim_t::step(db_t *inst)
    spdlog::debug("Stepping, FC: {}",fetch_cycle);
    bool activity_observed = false;
    std::ostringstream activity_trace;
+   // activity_trace is only ever printed when LOG_LEVEL != 0; setting badbit
+   // makes every << a no-op so the (otherwise dominant) formatting cost vanishes
+   if (LOG_LEVEL == 0) activity_trace.setstate(std::ios_base::badbit);
 
    // Preliminary step: determine which piece of the instruction this is.
    static uint8_t piece = UINT8_MAX;
