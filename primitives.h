@@ -198,7 +198,7 @@ struct csr {
 
     csr() { mask = 0; width = 0; cutoff = 0; } // NEVER use this
 
-    csr(u32 mask, u32 width, u8 cutoff) : mask(mask), width(width), cutoff(cutoff) {}
+    csr(u32 mask, u32 width, u8 cutoff) : mask(mask), width(width - 1), cutoff(cutoff) {}
 
     void shift_and_fold(BranchResult branch, bool oldest) {
         u32 out = hash ^ (oldest << cutoff);

@@ -11,6 +11,9 @@
 
 #include "primitives.h"
 
+#define TAGE_STATS
+// #undef TAGE_STATS
+
 class BranchPredictorBase {
 public:
     virtual bool predict(u32 pc) = 0;
@@ -232,6 +235,8 @@ class TAGEPredictor : public BranchPredictorBase {
     std::array<u16, NC> _history_lengths = {};
     std::array<u16, 2*NC> _idx_cache = {};
 
+    SatCounter<4> _aon_tracker = {};
+
     size_t _branches_seen = 0;
     int8_t _top_idx = -1;
 
@@ -245,6 +250,7 @@ class TAGEPredictor : public BranchPredictorBase {
     std::array<u64, NC+1> _stat_prov_miss = {};
     u64 _stat_total = 0;
     u64 _stat_alt_used = 0, _stat_alt_used_miss = 0, _stat_alt_prov_miss = 0;
+    u64 _stat_alt_accepted = 0, _stat_alt_rejected = 0;
     u64 _stat_alloc_attempt = 0, _stat_alloc_success = 0, _stat_resets = 0;
 #endif
 
@@ -300,17 +306,24 @@ class TAGEPredictor : public BranchPredictorBase {
                 _pred_table(_table_size, SatCounter<2>()), 
                 _banks(NC, std::vector<TagEntry>(_table_size, TagEntry()))
             {
+                float factor = 1.0;
                 for (int i = 0; i < NC; i++) {
-                    if (L1 > H) {
+                    u16 hl = L1 * factor;
+                    // std::cout << hl << std::endl;
+                    if (hl > H) {
                         char err_msg[50];
-                        snprintf(err_msg, 49, "%d is greater than the max history length of %d", L1, H);
+                        snprintf(err_msg, 49, "%d is greater than the max history length of %d",hl, H);
                         throw(std::runtime_error(err_msg));
                     }
-                    _history_lengths[i] = L1;    
-                    _hashes[2*i] = csr(_pc_mask, _idx_width - 1, (L1 - 1) % idx_width);
-                    _hashes[2*i+1] = csr(_tag_mask, _tag_width - 1, (L1 - 1) % tag_width);
-                    L1 *= ratio;    
+                    _history_lengths[i] = hl;    
+                    _hashes[2*i] = csr(_pc_mask, _idx_width, (hl - 1) % idx_width);
+                    _hashes[2*i+1] = csr(_tag_mask, _tag_width, (hl - 1) % tag_width);
+                    factor *= ratio;    
                 }
+        }
+
+        ~TAGEPredictor() {
+            print_stats();
         }
 
         void update(u32 pc, BranchResult branch) override {
@@ -326,11 +339,17 @@ class TAGEPredictor : public BranchPredictorBase {
                 _stat_alt_used++;
                 if (_alt_pred != branch) { _stat_alt_used_miss++; }
                 if (_top_pred != branch) { _stat_alt_prov_miss++; }
+                if (_aon_tracker.predict()) { _stat_alt_accepted++; }
+                if (!_aon_tracker.predict()) { _stat_alt_rejected++; }
             }
 #endif
             
             if (!provider_corr && !_alt_on_new) {
                 _allocate_new(branch);
+            }
+
+            if (_alt_on_new) {
+                _aon_tracker.update(BranchResult(alt_corr));
             }
 
             if (_top_idx > -1) {
@@ -390,7 +409,8 @@ class TAGEPredictor : public BranchPredictorBase {
                 auto top_idx = _idx_cache[_top_idx];
                 if (_banks[_top_idx][top_idx].get_u() == 0 && (_banks[_top_idx][top_idx].get_ctr() == 3 || _banks[_top_idx][top_idx].get_ctr() == 4)) {
                     _alt_on_new = true;
-                    return _alt_pred;
+                    return _aon_tracker.predict() ? _alt_pred : _top_pred;
+                    // return _alt_pred;
                 }
             }
 
@@ -399,8 +419,9 @@ class TAGEPredictor : public BranchPredictorBase {
 
         std::string predictor_name() const override { return "TAGE"; }
 
-#ifdef TAGE_STATS
+
         void print_stats() const {
+            #ifdef TAGE_STATS
             auto pct = [](u64 num, u64 den) { return den ? 100.0 * num / den : 0.0; };
             std::cout << "==== TAGE_STATS ====\n";
             std::cout << "total updates: " << _stat_total << "\n";
@@ -414,10 +435,13 @@ class TAGEPredictor : public BranchPredictorBase {
             std::cout << "alt_on_new used: " << _stat_alt_used
                       << " (" << pct(_stat_alt_used, _stat_total) << "%)"
                       << ", MR when used " << pct(_stat_alt_used_miss, _stat_alt_used) << "%"
-                      << " (provider would have had MR " << pct(_stat_alt_prov_miss, _stat_alt_used) << "%)\n";
+                      << " (provider would have had MR " << pct(_stat_alt_prov_miss, _stat_alt_used) << "%)\n"
+                      << "alt_on_new overriden: " << _stat_alt_rejected
+                      << ", alt_on_new success: " << _stat_alt_accepted << "\n";
             std::cout << "alloc attempts: " << _stat_alloc_attempt
                       << ", success " << pct(_stat_alloc_success, _stat_alloc_attempt) << "%"
                       << ", u-resets: " << _stat_resets << "\n";
+            #endif
         }
-#endif
+
 };

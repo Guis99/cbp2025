@@ -42,7 +42,7 @@ class SampleCondPredictor
         {
 #ifdef TAGE_STATS
             printf("==== PC_STATS ====\n");
-            printf("dynamic cond branches: %lu\n", n_branches);
+            printf("dynamic cond branches: %llu\n", n_branches);
             printf("unique cond branch PCs: %lu (bimodal has 4096 entries, banks 4096 x 7)\n", uniq_pcs.size());
             printf("PCs with nonzero low 2 bits: %lu\n", n_misaligned);
             printf("PCs above 32 bits: %lu\n", n_over32);
@@ -59,6 +59,7 @@ class SampleCondPredictor
             if (PC >> 32) { n_over32++; }
 #endif
             return tage.predict(static_cast<u32>(PC));
+        // return tage_pred;
         }
 
         // Called via spec_update immediately after each conditional-branch
