@@ -12,10 +12,6 @@ uv pip install gdown                       # to pull from the Google Drive folde
 # gdown reports a different output dir, move the *.tar.xz there (or set DL_DIR).
 gdown --folder https://drive.google.com/drive/folders/10CL13RGDW3zn-Dx7L0ineRvl7EpRsZDW
 
-# Extract each archive into its OWN dir. (The previous version extracted
-# fp.tar.xz into all four dirs -- classic copy-paste bug.)
-# compress.tar.xz and media.tar.xz are also downloaded but not needed here;
-# add them to the list if you want them.
 for tr_type in fp infra int web; do
     archive="./traces/${tr_type}.tar.xz"
     if [ ! -f "$archive" ]; then

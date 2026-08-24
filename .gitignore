@@ -14,3 +14,4 @@ out.txt
 /.clangd
 
 sync_bp.sh
+*/*build**
