@@ -24,6 +24,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _PARAMETERS_H_
 #define _PARAMETERS_H_
 
+#include <string>
+
 enum class VPTracks
 {
     ALL  = 0,
@@ -31,6 +33,11 @@ enum class VPTracks
     LoadsOnlyHitMiss,
     NumTracks
 };
+
+// Selected conditional-branch predictor for the sweep harness (set by -p).
+extern std::string PREDICTOR_TYPE;
+// Instruction cap for quick sweeps (0 = unlimited); set by -n.
+extern uint64_t MAX_INSTS;
 
 extern bool VP_ENABLE;
 extern bool VP_PERFECT;

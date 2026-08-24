@@ -21,15 +21,17 @@
 # 
 # // Author: Eric Rotenberg (ericro@ncsu.edu)
 
+INCLDIR = -I..
 CC = g++
 OPT = -O3
 LIBS = -lcbp -lz
 #FLAGS = -std=c++11 -L./lib $(LIBS) $(OPT)
-FLAGS = -std=c++20 -L./lib $(LIBS) $(OPT)
-CPPFLAGS = -std=c++20 $(OPT)
+FLAGS = -std=c++20 -L./lib $(LIBS) $(OPT) $(INCLDIR)
+CPPFLAGS = -std=c++20 $(OPT) 
+
 
 OBJ = cond_branch_predictor_interface.o my_cond_branch_predictor.o
-DEPS = cbp.h my_cond_branch_predictor.h predictors.h primitives.h
+DEPS = cbp.h my_cond_branch_predictor.h
 
 DEBUG=0
 ifeq ($(DEBUG), 1)

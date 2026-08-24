@@ -65,6 +65,34 @@ int parseargs(int argc, char ** argv)
         PREFETCHER_ENABLE = true;
         i++;
      }
+     else if (!strcmp(argv[i], "-p"))
+     {
+        i++;
+        if (i < argc)
+        {
+           PREDICTOR_TYPE = argv[i];
+           i++;
+        }
+        else
+        {
+           printf("Usage: missing predictor type: -p <type>.\n");
+           exit(0);
+        }
+     }
+     else if (!strcmp(argv[i], "-n"))
+     {
+        i++;
+        if (i < argc)
+        {
+           MAX_INSTS = strtoull(argv[i], nullptr, 10);
+           i++;
+        }
+        else
+        {
+           printf("Usage: missing instruction cap: -n <max_insts>.\n");
+           exit(0);
+        }
+     }
      //else if (!strcmp(argv[i], "-f"))
      //{
      //   i++;
@@ -297,9 +325,10 @@ int main(int argc, char ** argv)
 
   db_t *inst = reader.get_inst(); 
 
+  uint64_t n_inst = 0;
   //bool dump_activity = true;
   //uint64_t current_fetch_cycle = 0;
-  while (inst != nullptr) 
+  while (inst != nullptr)
   {
       //const bool logging_activated = (LOG_LEVEL != 0) && (current_fetch_cycle>= LOG_START_CYCLE) && (current_fetch_cycle<=LOG_END_CYCLE);
       //if(logging_activated && dump_activity)
@@ -307,6 +336,9 @@ int main(int argc, char ** argv)
       //    std::cout<<"======================================================= Begin "<<current_fetch_cycle<<"=======================================================\n";
       //    dump_activity = false;
       //}
+
+      if (MAX_INSTS && n_inst >= MAX_INSTS) { delete inst; break; }
+      ++n_inst;
 
       sim->step(inst);
 

@@ -1,0 +1,4 @@
+predictor,trace,instructions,numbr,mispbr,mr,mpki
+bimodal,int_0_trace,1916658,235883,11496,4.8736,5.9979
+gshare,int_0_trace,1916658,235883,10186,4.3182,5.3145
+reference,int_0_trace,1916658,235883,8119,3.4420,4.2360

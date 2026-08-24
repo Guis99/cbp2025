@@ -1,74 +1,77 @@
 #ifndef _PREDICTOR_H_
 #define _PREDICTOR_H_
 
-#include <stdlib.h>
-
-// temporary diagnostics; remove this define to strip all instrumentation
-#define TAGE_STATS 1
-
-#ifdef TAGE_STATS
-#include <unordered_set>
-#endif
+#include <array>
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <string>
 
 #include "predictors.h"
+#include "tage_improved.h"
+#include "predictor_params.h"   // shared geometry (BIM_LOG, GSH_*, TL_*, PCP_*, TP_*, TI_*)
+#include "lib/parameters.h"     // PREDICTOR_TYPE, set by cbp.cc's -p flag
+
+// nLookups the TAGEImproved template exposes for the given TI_NC.
+constexpr int TI_NLOOKUPS = 2 * TI_NC;
+
+static std::array<bool, TI_NLOOKUPS + 1> make_no_skip() {
+    std::array<bool, TI_NLOOKUPS + 1> no_skip;
+    no_skip.fill(true);
+    return no_skip;
+}
+
+// Build the predictor selected by -p / PREDICTOR_TYPE, sized from
+// predictor_params.h so the swept geometry matches sizing.cpp exactly.
+// "reference" returns nullptr; predict() then falls back to the CBP2016
+// TAGE-SC-L prediction, giving a free baseline column in the sweep.
+static std::unique_ptr<BranchPredictorBase> make_predictor(const std::string& t) {
+    if (t == "bimodal")      return std::make_unique<BimodalPredictor>(BIM_LOG);
+    if (t == "gshare")       return std::make_unique<GSharePredictor>(GSH_TBL, GSH_HIST);
+    if (t == "twolevel")     return std::make_unique<TwoLevelPredictor>(TL_TBL, TL_HIST);
+    if (t == "perceptron")   return std::make_unique<PerceptronPredictor>(PCP_TBL, PCP_HIST);
+    if (t == "tage")         return std::make_unique<TAGEPredictor<TP_H, TP_NC>>(
+                                        TP_IDX, TP_TAG, TP_NC, TP_L1, TP_RATIO);
+    if (t == "tageimproved") return std::make_unique<TAGEImproved<TI_N_L, TI_N_U, TI_NC>>(
+                                        TI_BASE_IW, TI_TAGE_IW, TI_SHORT_TW, TI_LONG_TW,
+                                        TI_FIRST_LONG, TI_MIN_HIST, TI_MAX_HIST, make_no_skip());
+    if (t == "reference")    return nullptr;   // predict() falls back to tage_pred
+    std::fprintf(stderr, "unknown predictor type: '%s'\n", t.c_str());
+    std::exit(1);
+}
 
 class SampleCondPredictor
 {
-        // TAGEPredictor<max history length, num tagged components>
-        //     (idx_width, tag_width, num_comp, L1, ratio)
-        // history lengths: L1 * ratio^i for each tagged component
-        // NB: tag_width must differ from idx_width — equal widths make the
-        // idx and tag CSRs identical, so tag == idx and tags match everything
-        TAGEPredictor<320, 7> tage;
-
-#ifdef TAGE_STATS
-        std::unordered_set<uint64_t> uniq_pcs;
-        uint64_t n_branches = 0;
-        uint64_t n_misaligned = 0;   // pc with low 2 bits set
-        uint64_t n_over32 = 0;       // pc that doesn't fit in u32
-#endif
+        std::unique_ptr<BranchPredictorBase> pred;   // null => "reference" baseline
 
     public:
-
-        SampleCondPredictor (void) : tage(12, 11, 7, 5, 2.0f)
-        {
-        }
+        // Deferred construction: cond_predictor_impl is a static built before
+        // main(), so PREDICTOR_TYPE isn't parsed yet here. Build in setup().
+        SampleCondPredictor (void) {}
 
         void setup()
         {
+            pred = make_predictor(PREDICTOR_TYPE);
+            std::printf("==== PREDICTOR: %s ====\n", PREDICTOR_TYPE.c_str());
         }
 
         void terminate()
         {
-#ifdef TAGE_STATS
-            printf("==== PC_STATS ====\n");
-            printf("dynamic cond branches: %llu\n", n_branches);
-            printf("unique cond branch PCs: %lu (bimodal has 4096 entries, banks 4096 x 7)\n", uniq_pcs.size());
-            printf("PCs with nonzero low 2 bits: %lu\n", n_misaligned);
-            printf("PCs above 32 bits: %lu\n", n_over32);
-            tage.print_stats();
-#endif
         }
 
         bool predict (uint64_t seq_no, uint8_t piece, uint64_t PC, const bool tage_pred)
         {
-#ifdef TAGE_STATS
-            n_branches++;
-            uniq_pcs.insert(PC);
-            if (PC & 0x3) { n_misaligned++; }
-            if (PC >> 32) { n_over32++; }
-#endif
-            return tage.predict(static_cast<u32>(PC));
-        // return tage_pred;
+            return pred ? pred->predict(PC) : tage_pred;
         }
 
         // Called via spec_update immediately after each conditional-branch
         // prediction, in program order, with the resolved direction. Doing the
-        // full TAGE update here preserves the strict predict->update interleave
-        // TAGEPredictor assumes, so no per-branch state checkpointing is needed.
+        // full update here preserves the strict predict->update interleave the
+        // predictors assume, so no per-branch state checkpointing is needed.
         void history_update (uint64_t seq_no, uint8_t piece, uint64_t PC, bool taken, uint64_t nextPC)
         {
-            tage.update(static_cast<u32>(PC), taken ? BranchResult::TAKEN : BranchResult::NOT_TAKEN);
+            if (pred)
+                pred->update(PC, taken ? BranchResult::TAKEN : BranchResult::NOT_TAKEN);
         }
 
         void update (uint64_t seq_no, uint8_t piece, uint64_t PC, bool resolveDir, bool predDir, uint64_t nextPC)

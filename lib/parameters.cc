@@ -23,7 +23,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <inttypes.h>
+#include <string>
 
+std::string PREDICTOR_TYPE = "tageimproved";
+uint64_t MAX_INSTS = 0;   // 0 = run the whole trace
 bool VP_ENABLE = false;
 bool VP_PERFECT = false;
 uint64_t VP_TRACK = 0;
