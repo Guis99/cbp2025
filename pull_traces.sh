@@ -18,10 +18,9 @@ for tr_type in fp infra int web; do
         echo "WARN: $archive not found (check gdown output location)" >&2
         continue
     fi
-    mkdir -p "./traces/${tr_type}"
-    # Archives are flat (int_0_trace.gz at root), so -C lands them directly.
-    # If yours are nested (int/int_0_trace.gz), verify with: tar -tf "$archive" | head
-    tar -xf "$archive" -C "./traces/${tr_type}" &
+    # Each archive already contains a top-level ${tr_type}/ dir, so extract into
+    # ./traces -- NOT ./traces/${tr_type}, which double-nests to traces/int/int/.
+    tar -xf "$archive" -C ./traces &
 done
 wait                                       # don't exit while extractions run
 

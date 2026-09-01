@@ -31,11 +31,23 @@ CPPFLAGS = -std=c++20 $(OPT)
 
 
 OBJ = cond_branch_predictor_interface.o my_cond_branch_predictor.o
-DEPS = cbp.h my_cond_branch_predictor.h
+# Rebuild the interface object whenever any of the predictor headers change.
+# (predictor_params.h / predictors.h / etc. live one level up; parameters.h in lib.)
+DEPS = cbp.h my_cond_branch_predictor.h \
+       ../predictor_params.h ../predictors.h ../tage_improved.h ../primitives.h \
+       ../collect.h lib/parameters.h
 
 DEBUG=0
 ifeq ($(DEBUG), 1)
 	CC += -ggdb3
+endif
+
+# COLLECT=1 enables the COLLECT_DATA instrumentation (windowed time-series to
+# a file per run; see collect.h). Distinct from TAGE_STATS. Use `make clean`
+# when toggling, since make doesn't track flag changes.
+COLLECT=0
+ifeq ($(COLLECT), 1)
+	FLAGS += -DCOLLECT_DATA
 endif
 
 

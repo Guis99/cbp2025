@@ -8,7 +8,7 @@ import csv, sys
 from collections import defaultdict
 
 csv_in  = sys.argv[1] if len(sys.argv) > 1 else "results.csv"
-out_png = sys.argv[2] if len(sys.argv) > 2 else "mpki.png"
+out_png = sys.argv[2] if len(sys.argv) > 2 else "results/mpki.png"
 
 data = defaultdict(dict)                       # data[predictor][trace] = mpki
 for r in csv.DictReader(open(csv_in)):
