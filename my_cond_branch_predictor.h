@@ -32,9 +32,16 @@ static std::unique_ptr<BranchPredictorBase> make_predictor(const std::string& t)
     if (t == "perceptron")   return std::make_unique<PerceptronPredictor>(PCP_TBL, PCP_HIST);
     if (t == "tage")         return std::make_unique<TAGEPredictor<TP_H, TP_NC>>(
                                         TP_IDX, TP_TAG, TP_NC, TP_L1, TP_RATIO);
-    if (t == "tageimproved") return std::make_unique<TAGEImproved<TI_N_L, TI_N_U, TI_NC>>(
+    if (t == "tageimproved") {
+        // SC on/off comes from the TI_SC env var (set per run by scripts/sweep_ti.sh):
+        // TI_SC=1 enables the statistical corrector; unset/0 leaves it off (baseline).
+        const char* sc_env = std::getenv("TI_SC");
+        const bool use_sc = sc_env && std::atoi(sc_env) != 0;
+        std::printf("==== TI_SC: %s ====\n", use_sc ? "on" : "off");
+        return std::make_unique<TAGEImproved<TI_N_L, TI_N_U, TI_NC>>(
                                         TI_BASE_IW, TI_TAGE_IW, TI_SHORT_TW, TI_LONG_TW,
-                                        TI_FIRST_LONG, TI_MIN_HIST, TI_MAX_HIST, make_no_skip());
+                                        TI_FIRST_LONG, TI_MIN_HIST, TI_MAX_HIST, make_no_skip(), use_sc);
+    }
     if (t == "reference")    return nullptr;   // predict() falls back to tage_pred
     std::fprintf(stderr, "unknown predictor type: '%s'\n", t.c_str());
     std::exit(1);
@@ -57,6 +64,10 @@ class SampleCondPredictor
 
         void terminate()
         {
+            // if (PREDICTOR_TYPE == "tageimproved") {
+            //     static_cast<TAGEImproved<TI_N_L, TI_N_U, TI_NC>>(pred)->print_stats();
+            // }
+            pred.reset();
         }
 
         bool predict (uint64_t seq_no, uint8_t piece, uint64_t PC, const bool tage_pred)
