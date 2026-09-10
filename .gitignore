@@ -12,6 +12,7 @@ out.txt
 /traces/
 
 /.clangd
+/.cache/
 
 sync_bp.sh
 */*build**

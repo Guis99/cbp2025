@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "metric": "CondDirect on_mpki (SC enabled), geomean over common traces"
+  },
+  "history": [
+    {
+      "date": "2026-09-08",
+      "commit": "f3522bd",
+      "dirty": false,
+      "note": "sc with glob. hist + bias + phist",
+      "config": {
+        "cap": "full",
+        "window": 250000
+      },
+      "aggregate": {
+        "geomean_on": 5.75335,
+        "mean_delta_pct": -4.141,
+        "n_traces": 5,
+        "n_net_positive": 5
+      },
+      "traces": {
+        "fp_0_trace": {
+          "off": 3.8107,
+          "on": 3.4578,
+          "delta_pct": -9.260766
+        },
+        "fp_1_trace": {
+          "off": 16.5174,
+          "on": 16.2242,
+          "delta_pct": -1.775098
+        },
+        "infra_0_trace": {
+          "off": 1.6484,
+          "on": 1.5528,
+          "delta_pct": -5.799563
+        },
+        "int_0_trace": {
+          "off": 5.6934,
+          "on": 5.6893,
+          "delta_pct": -0.072013
+        },
+        "int_1_trace": {
+          "off": 13.2215,
+          "on": 12.7194,
+          "delta_pct": -3.797602
+        }
+      }
+    }
+  ]
+}

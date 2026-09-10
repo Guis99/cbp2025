@@ -7,10 +7,18 @@
 #include <memory>
 #include <string>
 
+// ========definitions consumed by below headers======== 
+
+#define USE_PHIST_ // turns on path history in tage_improved.h
+
 #include "predictors.h"
 #include "tage_improved.h"
 #include "predictor_params.h"   // shared geometry (BIM_LOG, GSH_*, TL_*, PCP_*, TP_*, TI_*)
 #include "lib/parameters.h"     // PREDICTOR_TYPE, set by cbp.cc's -p flag
+
+static constexpr bool TSCL_64LB_ON = false;
+
+// ================
 
 // nLookups the TAGEImproved template exposes for the given TI_NC.
 constexpr int TI_NLOOKUPS = 2 * TI_NC;
@@ -59,6 +67,7 @@ class SampleCondPredictor
         void setup()
         {
             pred = make_predictor(PREDICTOR_TYPE);
+            // pred = nullptr;
             std::printf("==== PREDICTOR: %s ====\n", PREDICTOR_TYPE.c_str());
         }
 
@@ -67,7 +76,7 @@ class SampleCondPredictor
             // if (PREDICTOR_TYPE == "tageimproved") {
             //     static_cast<TAGEImproved<TI_N_L, TI_N_U, TI_NC>>(pred)->print_stats();
             // }
-            pred.reset();
+            // pred.reset();
         }
 
         bool predict (uint64_t seq_no, uint8_t piece, uint64_t PC, const bool tage_pred)
